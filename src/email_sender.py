@@ -5,9 +5,8 @@ Uses credentials.json and token.json; body from Emaildraft.md with <display_name
 import base64
 import logging
 from datetime import datetime
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.application import MIMEApplication
+from email import policy
+from email.message import EmailMessage
 from pathlib import Path
 
 from google.auth.exceptions import RefreshError
@@ -74,17 +73,20 @@ def send_report_email(
     creds = get_gmail_credentials()
     service = build("gmail", "v1", credentials=creds)
 
-    msg = MIMEMultipart()
+    current_date = datetime.now().strftime("%B %d, %Y")
+    subject = f"{display_name} : Progress Report : {current_date}"
+
+    msg = EmailMessage(policy=policy.SMTP)
     msg["To"] = to_email
     msg["From"] = GMAIL_ADDRESS
-    current_date = datetime.now().strftime("%B %d, %Y")
-    msg["Subject"] = f"{display_name} : Progress Report : {current_date}"
-    body = get_email_body(display_name)
-    msg.attach(MIMEText(body, "plain"))
-
-    part = MIMEApplication(excel_bytes, _subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    part.add_header("Content-Disposition", "attachment", filename=filename)
-    msg.attach(part)
+    msg["Subject"] = subject
+    msg.set_content(get_email_body(display_name))
+    msg.add_attachment(
+        excel_bytes,
+        maintype="application",
+        subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=filename,
+    )
 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
     service.users().messages().send(userId="me", body={"raw": raw}).execute()
