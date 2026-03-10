@@ -6,8 +6,8 @@
 #   Body: { "ref": "main", "inputs": { "user_id": "1", "login_password": "...", "report_password": "..." } }
 #
 # Required repository secrets:
-#   - GMAIL_CREDENTIALS_B64: Base64-encoded credentials.json (run: base64 -i credentials.json | pbcopy)
-#   - GMAIL_TOKEN_B64: Base64-encoded token.json
+#   - credentials_json: Base64-encoded credentials.json (run: base64 -i credentials.json | pbcopy)
+#   - token_json: Base64-encoded token.json
 #   - SQLITE_API_KEY, SQLITE_DB_URL, SQLITE_DB_NAME (optional, default: main)
 #   - GMAIL_ADDRESS, REPORT_EMAIL_SUBJECT (optional)
 #
@@ -49,11 +49,11 @@ jobs:
 
       - name: Create Gmail credential files
         env:
-          GMAIL_CREDENTIALS_B64: ${{ secrets.GMAIL_CREDENTIALS_B64 }}
-          GMAIL_TOKEN_B64: ${{ secrets.GMAIL_TOKEN_B64 }}
+          credentials_json: ${{ secrets.credentials_json }}
+          token_json: ${{ secrets.token_json }}
         run: |
-          echo "$GMAIL_CREDENTIALS_B64" | base64 -d > credentials.json
-          echo "$GMAIL_TOKEN_B64" | base64 -d > token.json
+          echo "$credentials_json" | base64 -d > credentials.json
+          echo "$token_json" | base64 -d > token.json
 
       - name: Run report
         env:

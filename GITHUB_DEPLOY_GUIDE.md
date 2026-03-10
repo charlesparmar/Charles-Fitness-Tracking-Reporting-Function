@@ -13,8 +13,8 @@ The report runs **directly in GitHub Actions**. No Railway, Render, or other hos
 
 | Secret | Value |
 |--------|-------|
-| `GMAIL_CREDENTIALS_B64` | Base64 of `credentials.json`: run `base64 -i credentials.json \| pbcopy` (macOS) |
-| `GMAIL_TOKEN_B64` | Base64 of `token.json`: run `base64 -i token.json \| pbcopy` |
+| `credentials_json` | Base64 of `credentials.json`: run `base64 -i credentials.json \| pbcopy` (macOS) |
+| `token_json` | Base64 of `token.json`: run `base64 -i token.json \| pbcopy` |
 | `SQLITE_API_KEY` | Your SQLite Cloud API key |
 | `SQLITE_DB_URL` | Your SQLite Cloud DB URL (e.g. `https://your-db.sqlitecloud.io:8090`) |
 
@@ -84,6 +84,6 @@ The workflow runs every **Monday at 9:00 AM UTC**. For scheduled runs, set `USER
 
 ## Troubleshooting
 
-- **Gmail auth fails** → Ensure `GMAIL_CREDENTIALS_B64` and `GMAIL_TOKEN_B64` are valid base64 of your OAuth files.
+- **Gmail auth fails** → Ensure `credentials_json` and `token_json` are valid base64 of your OAuth files.
 - **DB connection fails** → Check `SQLITE_API_KEY`, `SQLITE_DB_URL`, `SQLITE_DB_NAME`.
 - **Decryption fails** → Verify `login_password` matches what the user used when encrypting.
