@@ -49,11 +49,20 @@ jobs:
 
       - name: Create Gmail credential files
         env:
-          credentials_json: ${{ secrets.credentials_json }}
-          token_json: ${{ secrets.token_json }}
+          credentials_json: ${{ secrets.credentials_json || vars.credentials_json }}
+          token_json: ${{ secrets.token_json || vars.token_json }}
         run: |
-          echo "$credentials_json" | base64 -d > credentials.json
-          echo "$token_json" | base64 -d > token.json
+          # Support both raw JSON and base64-encoded content
+          if echo "$credentials_json" | base64 -d > credentials.json 2>/dev/null; then
+            : # decoded successfully
+          else
+            echo "$credentials_json" > credentials.json
+          fi
+          if echo "$token_json" | base64 -d > token.json 2>/dev/null; then
+            : # decoded successfully
+          else
+            echo "$token_json" > token.json
+          fi
 
       - name: Run report
         env:

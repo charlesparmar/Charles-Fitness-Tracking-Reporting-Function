@@ -7,14 +7,14 @@ The report runs **directly in GitHub Actions**. No Railway, Render, or other hos
 ## Step 1: Add GitHub repository secrets
 
 1. Go to **Settings** → **Secrets and variables** → **Actions**
-2. Click **New repository secret** and add:
+2. Add these as **Secrets** (not Variables) — click **New repository secret**:
 
 ### Required
 
 | Secret | Value |
 |--------|-------|
-| `credentials_json` | Base64 of `credentials.json`: run `base64 -i credentials.json \| pbcopy` (macOS) |
-| `token_json` | Base64 of `token.json`: run `base64 -i token.json \| pbcopy` |
+| `credentials_json` | Either **raw JSON** (paste the file contents) or **base64-encoded** (run `base64 -i credentials.json \| pbcopy` on macOS) |
+| `token_json` | Either **raw JSON** (paste the file contents) or **base64-encoded** (run `base64 -i token.json \| pbcopy`) |
 | `SQLITE_API_KEY` | Your SQLite Cloud API key |
 | `SQLITE_DB_URL` | Your SQLite Cloud DB URL (e.g. `https://your-db.sqlitecloud.io:8090`) |
 
@@ -84,6 +84,7 @@ The workflow runs every **Monday at 9:00 AM UTC**. For scheduled runs, set `USER
 
 ## Troubleshooting
 
-- **Gmail auth fails** → Ensure `credentials_json` and `token_json` are valid base64 of your OAuth files.
+- **`base64: invalid input`** → You may have pasted raw JSON instead of base64. The workflow now accepts both; re-run the workflow. If it still fails, ensure the secret is in **Secrets** (not Variables) and has no extra whitespace.
+- **Gmail auth fails** → Ensure `credentials_json` and `token_json` contain valid OAuth file content (raw JSON or base64).
 - **DB connection fails** → Check `SQLITE_API_KEY`, `SQLITE_DB_URL`, `SQLITE_DB_NAME`.
 - **Decryption fails** → Verify `login_password` matches what the user used when encrypting.
