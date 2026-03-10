@@ -25,7 +25,6 @@ The report runs **directly in GitHub Actions**. No Railway, Render, or other hos
 | `SQLITE_DB_NAME` | Database name (default: `main`) |
 | `SQLITE_SSL_VERIFY` | `true` or `false` |
 | `GMAIL_ADDRESS` | Sender email |
-| `REPORT_EMAIL_SUBJECT` | Email subject line |
 
 ### For scheduled runs only
 

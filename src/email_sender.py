@@ -4,6 +4,7 @@ Uses credentials.json and token.json; body from Emaildraft.md with <display_name
 """
 import base64
 import logging
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -20,7 +21,6 @@ from src.config import (
     GMAIL_API_CREDENTIALS_PATH,
     GMAIL_API_TOKEN_PATH,
     EMAIL_DRAFT_PATH,
-    REPORT_EMAIL_SUBJECT,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def send_report_email(
 ) -> None:
     """
     Send email to to_email with body from draft (display_name substituted),
-    subject from config, and Excel file attached. Uses Gmail API.
+    subject "{display_name} : Progress Report : {current_date}", and Excel attached. Uses Gmail API.
     """
     creds = get_gmail_credentials()
     service = build("gmail", "v1", credentials=creds)
@@ -77,7 +77,8 @@ def send_report_email(
     msg = MIMEMultipart()
     msg["To"] = to_email
     msg["From"] = GMAIL_ADDRESS
-    msg["Subject"] = REPORT_EMAIL_SUBJECT
+    current_date = datetime.now().strftime("%B %d, %Y")
+    msg["Subject"] = f"{display_name} : Progress Report : {current_date}"
     body = get_email_body(display_name)
     msg.attach(MIMEText(body, "plain"))
 

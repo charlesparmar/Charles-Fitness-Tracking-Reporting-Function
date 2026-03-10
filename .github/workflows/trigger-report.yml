@@ -9,7 +9,7 @@
 #   - credentials_json: Base64-encoded credentials.json (run: base64 -i credentials.json | pbcopy)
 #   - token_json: Base64-encoded token.json
 #   - SQLITE_API_KEY, SQLITE_DB_URL, SQLITE_DB_NAME (optional, default: main)
-#   - GMAIL_ADDRESS, REPORT_EMAIL_SUBJECT (optional)
+#   - GMAIL_ADDRESS (optional)
 #
 # Inputs (from workflow_dispatch or API): user_id, login_password, report_password
 
@@ -74,7 +74,6 @@ jobs:
           SQLITE_DB_NAME: ${{ secrets.SQLITE_DB_NAME }}
           SQLITE_SSL_VERIFY: ${{ secrets.SQLITE_SSL_VERIFY }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
-          REPORT_EMAIL_SUBJECT: ${{ secrets.REPORT_EMAIL_SUBJECT }}
           GMAIL_API_CREDENTIALS_PATH: ${{ github.workspace }}/credentials.json
           GMAIL_API_TOKEN_PATH: ${{ github.workspace }}/token.json
         run: python -m src.run_report

@@ -26,6 +26,5 @@ GMAIL_API_TOKEN_PATH = os.environ.get(
     str(Path(__file__).resolve().parent.parent / "token.json"),
 )
 
-# Email draft and subject
+# Email draft (subject is built as "{display_name} : Progress Report : {date}")
 EMAIL_DRAFT_PATH = Path(__file__).resolve().parent.parent / "Emaildraft.md"
-REPORT_EMAIL_SUBJECT = os.environ.get("REPORT_EMAIL_SUBJECT", "Your Fitness Report from Charles' Fitness Tracker")
