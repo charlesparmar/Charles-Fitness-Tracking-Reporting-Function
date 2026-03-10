@@ -1,100 +1,89 @@
-# Push to GitHub & Trigger Report via Workflow
+# Trigger Fitness Report via GitHub Actions (No Deployment Needed)
 
-## Step 1: Push your code to GitHub
-
-1. **Stage and commit your changes:**
-   ```bash
-   cd /Users/charlesparmar/Project/Charles-Fitness-Tracking-Reporting-Function
-   git add .
-   git status   # Review what will be committed (.env, credentials.json, token.json should NOT appear—they're in .gitignore)
-   git commit -m "Add GitHub workflow to trigger fitness report"
-   ```
-
-2. **Push to GitHub:**
-   ```bash
-   git push origin main
-   ```
-   (Use `master` instead of `main` if that's your default branch.)
+The report runs **directly in GitHub Actions**. No Railway, Render, or other hosting required.
 
 ---
 
-## Step 2: Deploy the app (required for the workflow)
+## Step 1: Add GitHub repository secrets
 
-The workflow triggers the report by calling your app's `/report` endpoint over HTTP. You need to deploy the app first.
+1. Go to **Settings** → **Secrets and variables** → **Actions**
+2. Click **New repository secret** and add:
 
-### Option A: Railway (recommended, free tier)
+### Required
 
-1. Go to [railway.app](https://railway.app) and sign in with GitHub.
-2. **New Project** → **Deploy from GitHub repo** → select `Charles-Fitness-Tracking-Reporting-Function`.
-3. Railway will detect Python. Add a **start command**: `gunicorn -b 0.0.0.0:$PORT src.main:app` (or use `flask run` if you add a Procfile).
-4. Add a `Procfile` in your repo:
-   ```
-   web: gunicorn -b 0.0.0.0:$PORT src.main:app
-   ```
-   And add `gunicorn` to `requirements.txt`.
-5. In Railway **Variables**, add all your env vars from `.env`:
-   - `SQLITE_API_KEY`, `SQLITE_DB_URL`, `SQLITE_DB_NAME`, etc.
-   - `GMAIL_ADDRESS`, `REPORT_EMAIL_SUBJECT`
-6. For Gmail OAuth: upload `credentials.json` and `token.json` as file variables, or bake them into the deploy (see Railway docs for secrets).
-7. Deploy. Copy the public URL (e.g. `https://your-app.railway.app`).
+| Secret | Value |
+|--------|-------|
+| `GMAIL_CREDENTIALS_B64` | Base64 of `credentials.json`: run `base64 -i credentials.json \| pbcopy` (macOS) |
+| `GMAIL_TOKEN_B64` | Base64 of `token.json`: run `base64 -i token.json \| pbcopy` |
+| `SQLITE_API_KEY` | Your SQLite Cloud API key |
+| `SQLITE_DB_URL` | Your SQLite Cloud DB URL (e.g. `https://your-db.sqlitecloud.io:8090`) |
 
-### Option B: Render
+### Optional (have defaults)
 
-1. Go to [render.com](https://render.com) → **New** → **Web Service**.
-2. Connect your GitHub repo.
-3. Build: `pip install -r requirements.txt`
-4. Start: `gunicorn -b 0.0.0.0:$PORT src.main:app`
-5. Add environment variables (same as `.env`).
-6. Deploy and copy the service URL.
+| Secret | Value |
+|--------|-------|
+| `SQLITE_DB_NAME` | Database name (default: `main`) |
+| `SQLITE_SSL_VERIFY` | `true` or `false` |
+| `GMAIL_ADDRESS` | Sender email |
+| `REPORT_EMAIL_SUBJECT` | Email subject line |
 
-### Option C: Google Cloud Run
+### For scheduled runs only
 
-1. Use `gcloud run deploy` with a Dockerfile or Cloud Build.
-2. Set env vars in the Cloud Run service.
-3. Copy the service URL.
+| Secret | Value |
+|--------|-------|
+| `USER_ID` | Default user ID (e.g. `1`) |
+| `LOGIN_PASSWORD` | User's decryption password |
+| `REPORT_PASSWORD` | Excel protection password |
 
 ---
 
-## Step 3: Add GitHub repository secrets
+## Step 2: Trigger from your iOS/macOS app
 
-1. Open your repo on GitHub: `https://github.com/charlesparmar/Charles-Fitness-Tracking-Reporting-Function`
-2. Go to **Settings** → **Secrets and variables** → **Actions**
-3. Click **New repository secret** and add:
+Use the GitHub API to trigger the workflow:
 
-| Secret Name       | Value                                                                 |
-|-------------------|-----------------------------------------------------------------------|
-| `REPORT_API_URL`  | Base URL of your deployed app (e.g. `https://your-app.railway.app`)    |
-| `USER_ID`         | Default user ID for scheduled runs (e.g. `1`)                         |
-| `LOGIN_PASSWORD`  | User's login password (for decryption)                                |
-| `REPORT_PASSWORD` | Password to protect the Excel file                                    |
+```
+POST https://api.github.com/repos/charlesparmar/Charles-Fitness-Tracking-Reporting-Function/actions/workflows/trigger-report.yml/dispatches
+```
 
-For **manual runs**, you can enter these in the workflow form instead. For **scheduled runs**, all four secrets must be set.
+**Headers:**
+- `Authorization: Bearer <GITHUB_PAT>`
+- `Accept: application/vnd.github+json`
+- `X-GitHub-Api-Version: 2022-11-28`
+- `Content-Type: application/json`
+
+**Body:**
+```json
+{
+  "ref": "main",
+  "inputs": {
+    "user_id": "1",
+    "login_password": "user's decryption password",
+    "report_password": "excel protection password"
+  }
+}
+```
+
+You need a **GitHub Personal Access Token (PAT)** with `workflow` scope to trigger workflows.
 
 ---
 
-## Step 4: Run the workflow
-
-### Manual trigger
+## Step 3: Manual trigger from GitHub UI
 
 1. Go to **Actions** → **Trigger Fitness Report**
 2. Click **Run workflow**
-3. Fill in (or leave default):
-   - **User ID**: e.g. `1`
-   - **Login password**: user's decryption password
-   - **Report password**: Excel protection password
+3. Enter `user_id`, `login_password`, `report_password` (or leave defaults if secrets are set)
 4. Click **Run workflow**
 
-### Scheduled runs
+---
 
-The workflow is set to run every **Monday at 9:00 AM UTC**. For scheduled runs, it uses the secrets `USER_ID`, `LOGIN_PASSWORD`, and `REPORT_PASSWORD`.
+## Scheduled runs
 
-To change or disable the schedule, edit `.github/workflows/trigger-report.yml` and modify or remove the `schedule` block.
+The workflow runs every **Monday at 9:00 AM UTC**. For scheduled runs, set `USER_ID`, `LOGIN_PASSWORD`, and `REPORT_PASSWORD` as secrets. To change or disable, edit the `schedule` block in `.github/workflows/trigger-report.yml`.
 
 ---
 
 ## Troubleshooting
 
-- **"REPORT_API_URL secret is not set"** → Add the `REPORT_API_URL` secret with your deployed app URL.
-- **404 / connection refused** → Check that the app is deployed and the URL is correct (no trailing slash).
-- **401 / 500 from /report** → Check app logs on Railway/Render; verify DB and Gmail credentials.
-- **Gmail auth issues** → Ensure `credentials.json` and `token.json` are available in the deployed environment (e.g. as build-time secrets or file variables).
+- **Gmail auth fails** → Ensure `GMAIL_CREDENTIALS_B64` and `GMAIL_TOKEN_B64` are valid base64 of your OAuth files.
+- **DB connection fails** → Check `SQLITE_API_KEY`, `SQLITE_DB_URL`, `SQLITE_DB_NAME`.
+- **Decryption fails** → Verify `login_password` matches what the user used when encrypting.

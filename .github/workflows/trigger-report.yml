@@ -1,15 +1,17 @@
-# Trigger the fitness report function.
-# Can run manually (workflow_dispatch) or on a schedule (cron).
+# Trigger the fitness report directly in GitHub Actions.
+# No Railway or other deployment needed.
 #
-# Prerequisites:
-# 1. Deploy this app somewhere (Railway, Render, Cloud Run, etc.) and get the base URL.
-# 2. Add these GitHub repository secrets:
-#    - REPORT_API_URL: Full URL to your deployed app (e.g. https://your-app.railway.app)
-#    - USER_ID: User ID to generate report for (e.g. 1)
-#    - LOGIN_PASSWORD: User's login password (for decryption)
-#    - REPORT_PASSWORD: Password to protect the Excel file
+# Trigger from iOS/macOS app via GitHub API:
+#   POST https://api.github.com/repos/{owner}/{repo}/actions/workflows/trigger-report.yml/dispatches
+#   Body: { "ref": "main", "inputs": { "user_id": "1", "login_password": "...", "report_password": "..." } }
 #
-# Optional: Add GMAIL_* and SQLITE_* secrets if running the report logic in the workflow instead of calling a deployed API.
+# Required repository secrets:
+#   - GMAIL_CREDENTIALS_B64: Base64-encoded credentials.json (run: base64 -i credentials.json | pbcopy)
+#   - GMAIL_TOKEN_B64: Base64-encoded token.json
+#   - SQLITE_API_KEY, SQLITE_DB_URL, SQLITE_DB_NAME (optional, default: main)
+#   - GMAIL_ADDRESS, REPORT_EMAIL_SUBJECT (optional)
+#
+# Inputs (from workflow_dispatch or API): user_id, login_password, report_password
 
 name: Trigger Fitness Report
 
@@ -29,36 +31,41 @@ on:
         required: true
         type: password
   schedule:
-    # Run every Monday at 9:00 AM UTC (adjust as needed)
     - cron: '0 9 * * 1'
 
 jobs:
-  trigger-report:
+  run-report:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger report via API
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create Gmail credential files
         env:
-          API_URL: ${{ secrets.REPORT_API_URL }}
-          USER_ID: ${{ github.event.inputs.user_id || secrets.USER_ID }}
+          GMAIL_CREDENTIALS_B64: ${{ secrets.GMAIL_CREDENTIALS_B64 }}
+          GMAIL_TOKEN_B64: ${{ secrets.GMAIL_TOKEN_B64 }}
+        run: |
+          echo "$GMAIL_CREDENTIALS_B64" | base64 -d > credentials.json
+          echo "$GMAIL_TOKEN_B64" | base64 -d > token.json
+
+      - name: Run report
+        env:
+          USER_ID: ${{ github.event.inputs.user_id || secrets.USER_ID || '1' }}
           LOGIN_PASSWORD: ${{ github.event.inputs.login_password || secrets.LOGIN_PASSWORD }}
           REPORT_PASSWORD: ${{ github.event.inputs.report_password || secrets.REPORT_PASSWORD }}
-        run: |
-          if [ -z "$API_URL" ]; then
-            echo "::error::REPORT_API_URL secret is not set. Deploy the app and add the URL as a secret."
-            exit 1
-          fi
-          uid=${USER_ID:-1}
-          payload=$(jq -n --arg uid "$uid" --arg lp "$LOGIN_PASSWORD" --arg rp "$REPORT_PASSWORD" \
-            '{user_id: ($uid | if . == "" then 1 else tonumber end), login_password: $lp, report_password: $rp}')
-          response=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/report" \
-            -H "Content-Type: application/json" \
-            -d "$payload")
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | sed '$d')
-          echo "Response ($http_code): $body"
-          if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
-            echo "::notice::Report triggered successfully"
-          else
-            echo "::error::Report failed with HTTP $http_code"
-            exit 1
-          fi
+          SQLITE_API_KEY: ${{ secrets.SQLITE_API_KEY }}
+          SQLITE_DB_URL: ${{ secrets.SQLITE_DB_URL }}
+          SQLITE_DB_NAME: ${{ secrets.SQLITE_DB_NAME }}
+          SQLITE_SSL_VERIFY: ${{ secrets.SQLITE_SSL_VERIFY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          REPORT_EMAIL_SUBJECT: ${{ secrets.REPORT_EMAIL_SUBJECT }}
+          GMAIL_API_CREDENTIALS_PATH: ${{ github.workspace }}/credentials.json
+          GMAIL_API_TOKEN_PATH: ${{ github.workspace }}/token.json
+        run: python -m src.run_report
