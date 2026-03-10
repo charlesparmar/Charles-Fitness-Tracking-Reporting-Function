@@ -1,0 +1,30 @@
+# Environment and secrets
+.env
+*.env
+.env.*
+credentials.json
+token.json
+token_sender.json
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

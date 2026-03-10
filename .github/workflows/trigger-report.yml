@@ -1,0 +1,64 @@
+# Trigger the fitness report function.
+# Can run manually (workflow_dispatch) or on a schedule (cron).
+#
+# Prerequisites:
+# 1. Deploy this app somewhere (Railway, Render, Cloud Run, etc.) and get the base URL.
+# 2. Add these GitHub repository secrets:
+#    - REPORT_API_URL: Full URL to your deployed app (e.g. https://your-app.railway.app)
+#    - USER_ID: User ID to generate report for (e.g. 1)
+#    - LOGIN_PASSWORD: User's login password (for decryption)
+#    - REPORT_PASSWORD: Password to protect the Excel file
+#
+# Optional: Add GMAIL_* and SQLITE_* secrets if running the report logic in the workflow instead of calling a deployed API.
+
+name: Trigger Fitness Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      user_id:
+        description: 'User ID for the report'
+        required: true
+        default: '1'
+      login_password:
+        description: 'Login password (decryption)'
+        required: true
+        type: password
+      report_password:
+        description: 'Report password (Excel protection)'
+        required: true
+        type: password
+  schedule:
+    # Run every Monday at 9:00 AM UTC (adjust as needed)
+    - cron: '0 9 * * 1'
+
+jobs:
+  trigger-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger report via API
+        env:
+          API_URL: ${{ secrets.REPORT_API_URL }}
+          USER_ID: ${{ github.event.inputs.user_id || secrets.USER_ID }}
+          LOGIN_PASSWORD: ${{ github.event.inputs.login_password || secrets.LOGIN_PASSWORD }}
+          REPORT_PASSWORD: ${{ github.event.inputs.report_password || secrets.REPORT_PASSWORD }}
+        run: |
+          if [ -z "$API_URL" ]; then
+            echo "::error::REPORT_API_URL secret is not set. Deploy the app and add the URL as a secret."
+            exit 1
+          fi
+          uid=${USER_ID:-1}
+          payload=$(jq -n --arg uid "$uid" --arg lp "$LOGIN_PASSWORD" --arg rp "$REPORT_PASSWORD" \
+            '{user_id: ($uid | if . == "" then 1 else tonumber end), login_password: $lp, report_password: $rp}')
+          response=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/report" \
+            -H "Content-Type: application/json" \
+            -d "$payload")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          echo "Response ($http_code): $body"
+          if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+            echo "::notice::Report triggered successfully"
+          else
+            echo "::error::Report failed with HTTP $http_code"
+            exit 1
+          fi
