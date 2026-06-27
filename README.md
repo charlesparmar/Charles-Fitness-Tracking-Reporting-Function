@@ -1,6 +1,6 @@
 # Fitness Reporting Function
 
-Python service that generates secured fitness reports and emails them. Triggered via HTTP POST with `user_id`, `login_password`, and `report_password`.
+Python service that generates secured fitness reports and sends them via email. Triggered via HTTP POST with `user_id`, `login_password`, and `report_password`.
 
 ## Setup
 
