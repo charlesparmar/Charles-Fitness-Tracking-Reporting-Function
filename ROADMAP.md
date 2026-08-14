@@ -20,7 +20,7 @@ Python-based reporting function that is triggered via GitHub API, fetches user a
 #### Excel template structure (tmp467pf_9d.xlsx)
 
 - **Sheet name:** `Fitness Data`
-- **Row 1 = header.** Columns A→P:
+- **Row 1 = header.** Columns A→Q:
 
 | Col | Header       | Col | Header       |
 |-----|--------------|-----|--------------|
@@ -28,12 +28,13 @@ Python-based reporting function that is triggered via GitHub API, fetches user a
 | B   | weight       | J   | forearms     |
 | C   | fat_percent  | K   | chest        |
 | D   | bmi          | L   | above_navel  |
-| E   | fat_weight   | M   | waist        |
-| F   | lean_weight  | N   | hips         |
-| G   | neck         | O   | thighs       |
-| H   | shoulders    | P   | calves       |
+| E   | fat_weight   | M   | navel        |
+| F   | lean_weight  | N   | waist        |
+| G   | neck         | O   | hips         |
+| H   | shoulders    | P   | thighs       |
+|     |              | Q   | calves       |
 
-- **Data:** From row 2. Column A = date (e.g. DD-MM-YYYY or YYYY-MM-DD); B–P = numeric.
+- **Data:** From row 2. Column A = date (e.g. DD-MM-YYYY or YYYY-MM-DD); B–Q = numeric.
 - **Output order:** Sort by `date` **ascending** (oldest on top, newest at bottom).
 
 ---
@@ -67,7 +68,7 @@ The other repo encrypts data as described in **`encryption_method.md`**. This fu
 4. **Per measurement row:** For each row from `fitness_measurements` for this user:
    - Read **`encrypted_data`** (ciphertext BLOB) and the **nonce/IV** for that row (column name may be `encryption_iv` or similar; see `encryption_method.md`).
    - Decrypt with **DEK + nonce** using **AES-GCM** to get the plaintext.
-   - Decode plaintext as **JSON** to get the measurement object (fields map to Excel columns: date, weight, fat_percent, bmi, fat_weight, lean_weight, neck, shoulders, biceps, forearms, chest, above_navel, waist, hips, thighs, calves).
+   - Decode plaintext as **JSON** to get the measurement object (fields map to Excel columns: date, weight, fat_percent, bmi, fat_weight, lean_weight, neck, shoulders, biceps, forearms, chest, above_navel, navel, waist, hips, thighs, calves).
 5. **After building Excel:** Do not persist the password, KEK, DEK, or decrypted measurements; use them only in memory for building the report, then clear/discard. The generated Excel is then password-protected with the **same** trigger password and sent; only the user can open it.
 
 ### Algorithms and parameters (match the other repo)
@@ -124,14 +125,14 @@ The other repo encrypts data as described in **`encryption_method.md`**. This fu
 |------|--------|------|
 | 3.1 | Query fitness_measurements | `SELECT` all columns from `fitness_measurements` WHERE `user` = `user_id`. Include **`encrypted_data`** and the column that stores the per-row nonce (e.g. **`encryption_iv`** — align with actual DB schema and `encryption_method.md`). Order by `date` ASC in SQL (or sort in Python). |
 | 3.2 | Implement decryption (see **Decryption** section) | Use the **password from the API trigger**. (1) Derive KEK = PBKDF2(password, user’s `key_salt`, 100_000, HMAC-SHA256, 32 bytes). (2) Decrypt user’s `encrypted_data_key` with KEK (AES-GCM) to get DEK. (3) For each row, decrypt `encrypted_data` with DEK and that row’s nonce (AES-GCM). (4) Decode each plaintext as JSON. Use a dedicated module (e.g. `decrypt.py`); do not log or persist password, KEK, DEK, or decrypted content. Handle decryption failures (e.g. wrong password) with a clear error; do not expose raw data. |
-| 3.3 | Map to report rows | From each decrypted JSON payload, map fields to the 16 Excel columns: `date`, `weight`, `fat_percent`, `bmi`, `fat_weight`, `lean_weight`, `neck`, `shoulders`, `biceps`, `forearms`, `chest`, `above_navel`, `waist`, `hips`, `thighs`, `calves`. |
+| 3.3 | Map to report rows | From each decrypted JSON payload, map fields to the 17 Excel columns: `date`, `weight`, `fat_percent`, `bmi`, `fat_weight`, `lean_weight`, `neck`, `shoulders`, `biceps`, `forearms`, `chest`, `above_navel`, `navel`, `waist`, `hips`, `thighs`, `calves`. |
 
 ### Phase 4: Excel report generation and password protection
 
 | Step | Action | Notes |
 |------|--------|------|
 | 4.1 | Choose Excel library | Use `openpyxl` to create `.xlsx` (copy template and fill, or build from scratch). For workbook encryption, use openpyxl’s password support or a library that supports .xlsx password protection (e.g. `msoffcrypto-tool` if saving as encrypted file). |
-| 4.2 | Implement report builder | One sheet named **Fitness Data**. Row 1 = header (A→P as in template structure above). Data from row 2, sorted by **date ascending**. |
+| 4.2 | Implement report builder | One sheet named **Fitness Data**. Row 1 = header (A→Q as in template structure above). Data from row 2, sorted by **date ascending**. |
 | 4.3 | Password-protect workbook | Apply Excel workbook password using the **same password** from the API trigger (used earlier for decryption). Use it only for this step; do not store, log, or pass it elsewhere. After attaching to email, clear any in-memory reference to the password and decrypted data. |
 | 4.4 | Naming and cleanup | Save as e.g. `report_{user_id}_{timestamp}.xlsx`. Delete temp file after email send (or retain per policy). |
 

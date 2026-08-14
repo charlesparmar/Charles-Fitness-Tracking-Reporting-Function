@@ -1,6 +1,6 @@
 """
 Build Excel report from decrypted rows and password-protect the workbook.
-Sheet "Fitness Data", columns A-P per ROADMAP; sort by date ascending.
+Sheet "Fitness Data", columns A-Q per ROADMAP; sort by date ascending.
 Uses report_password only; encrypts file with msoffcrypto so Excel prompts to open.
 """
 import io
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 HEADERS = [
     "date", "weight", "fat_percent", "bmi", "fat_weight", "lean_weight",
     "neck", "shoulders", "biceps", "forearms", "chest", "above_navel",
-    "waist", "hips", "thighs", "calves",
+    "navel", "waist", "hips", "thighs", "calves",
 ]
 
 # Map report header -> decrypted JSON key (camelCase from iOS)
@@ -31,7 +31,8 @@ _FIELD_MAP = {
     "biceps": "biceps",
     "forearms": "forearms",
     "chest": "chest",
-    "above_navel": "aboveNavel",  # fallback: navel
+    "above_navel": "aboveNavel",
+    "navel": "navel",
     "waist": "waist",
     "hips": "hips",
     "thighs": "thighs",
@@ -55,8 +56,6 @@ def _row_from_measurement(m: dict) -> list:
     for h in HEADERS:
         key = _FIELD_MAP.get(h, h)
         val = m.get(key)
-        if key == "aboveNavel" and val is None:
-            val = m.get("navel")
         if h == "date":
             val = _format_date(val)
         row.append(val)
